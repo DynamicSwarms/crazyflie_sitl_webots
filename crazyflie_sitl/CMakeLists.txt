@@ -1,0 +1,85 @@
+cmake_minimum_required(VERSION 3.8)
+project(crazyflie_sitl)
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+# find dependencies
+find_package(ament_cmake REQUIRED)
+find_package(Eigen3 REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(yaml-cpp REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(crtp_interfaces REQUIRED)
+
+include_directories(
+  include
+)
+
+add_executable(crazyflie_sitl src/crazyflie_sitl.cpp)
+target_include_directories(crazyflie_sitl PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(crazyflie_sitl PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+
+# Build quadcopter_model library
+file(GLOB_RECURSE QUADCOPTER_MODEL_SRCS
+    src/quadcopter_model/common/*.cpp
+    src/quadcopter_model/dynamics/*.cpp
+    src/quadcopter_model/objects/*.cpp
+    src/quadcopter_model/sensors/*.cpp
+)
+
+add_library(quadcopter_model
+  ${QUADCOPTER_MODEL_SRCS}
+)
+set_target_properties(quadcopter_model PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+target_compile_features(quadcopter_model PUBLIC cxx_std_17)
+target_include_directories(quadcopter_model PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/crazyflie_sitl>
+  $<INSTALL_INTERFACE:include>
+)
+
+
+target_link_libraries(quadcopter_model
+  Eigen3::Eigen
+  yaml-cpp
+)
+
+
+
+
+
+
+
+
+# Link the quadcopter_model library to the crazyflie_sitl executable
+target_link_libraries(crazyflie_sitl
+  quadcopter_model
+)
+ament_target_dependencies(crazyflie_sitl
+  rclcpp
+  tf2_ros
+  geometry_msgs
+  crtp_interfaces
+)
+
+install(TARGETS crazyflie_sitl
+  DESTINATION lib/${PROJECT_NAME})
+
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  # the following line skips the linter which checks for copyrights
+  # comment the line when a copyright and license is added to all source files
+  set(ament_cmake_copyright_FOUND TRUE)
+  # the following line skips cpplint (only works in a git repo)
+  # comment the line when this package is in a git repo and when
+  # a copyright and license is added to all source files
+  set(ament_cmake_cpplint_FOUND TRUE)
+  ament_lint_auto_find_test_dependencies()
+endif()
+
+ament_package()

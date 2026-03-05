@@ -11,7 +11,9 @@ find_package(ament_cmake REQUIRED)
 # further dependencies manually.
 find_package(rclcpp REQUIRED)
 find_package(crtp_interfaces REQUIRED)
+find_package(Eigen3 REQUIRED)
 
+## Build the mock_sim executable
 add_executable(mock_sim src/mock_sim.cpp)
 target_include_directories(mock_sim PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
