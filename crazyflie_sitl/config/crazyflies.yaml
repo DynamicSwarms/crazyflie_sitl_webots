@@ -1,3 +1,7 @@
+publish_tf: true
+broadcast_pointcloud: false
+broadcast_pointcloud_rate_hz: 100
+broadcast_pointcloud_topic_name: "pointCloud"
 crazyflies:
   - id: 1
     initial_position: [0.0, 0.0, 0.0]

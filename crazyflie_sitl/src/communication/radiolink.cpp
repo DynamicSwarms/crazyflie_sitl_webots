@@ -58,7 +58,7 @@ Radiolink::handle_radio_communication()
     // As long as we are not connected, we send a null packets
     // in order to establish the connection to the radio.
     m_control_loop_count++;
-    if (!is_connected() && m_control_loop_count++ % 20 == 0)
+    if (!is_connected() && m_control_loop_count % 20 == 0)
     {
         sitl_communication::packets::queue_packet out_packet;
         out_packet.data[0] = 0xF3;

@@ -10,6 +10,17 @@
 #include <yaml-cpp/yaml.h>
 #include "ament_index_cpp/get_package_share_directory.hpp"
 
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl_conversions/pcl_conversions.h>
+
+#include "crazyflie_sitl/crazyflie_sitl.hpp"
+#include <tf2_ros/transform_broadcaster.h>
+
+
+std::string pkg_share = ament_index_cpp::get_package_share_directory("crazyflie_sitl");
+std::string default_yaml = pkg_share + "/config/crazyflies.yaml";
 
 class CrazyflieSITLContainerException : public std::runtime_error
 {
@@ -41,9 +52,6 @@ CrazyflieSITContainer(
   , m_executor(executor)
   , m_crazyflies()
   {
-    std::string pkg_share = ament_index_cpp::get_package_share_directory("crazyflie_sitl");
-    std::string default_yaml = pkg_share + "/config/crazyflies.yaml";
-    
     this->declare_parameter<std::string>("crazyflie_configuration", default_yaml);
     std::string yaml_file;
     this->get_parameter("crazyflie_configuration", yaml_file);
@@ -65,6 +73,31 @@ CrazyflieSITContainer(
         p_initial_positions.push_back(cf_["initial_position"].as<std::vector<double>>());
     }
 
+    if (config["publish_tf"])
+    {
+        if ((p_publish_tf = config["publish_tf"].as<bool>()) == true)
+            RCLCPP_INFO(this->get_logger(), "TF publishing enabled.");
+    }
+    if (config["broadcast_pointcloud"])
+    {
+        if ((p_broadcast_pointcloud = config["broadcast_pointcloud"].as<bool>()) == true)
+        {
+            if (config["broadcast_pointcloud_rate_hz"] && config["broadcast_pointcloud_topic_name"])
+            {
+                p_broadcast_pointcloud_rate_hz = config["broadcast_pointcloud_rate_hz"].as<int>();
+                p_broadcast_pointcloud_topic_name = config["broadcast_pointcloud_topic_name"].as<std::string>();
+                
+                m_pointcloud_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>(
+                    p_broadcast_pointcloud_topic_name, rclcpp::QoS(1));
+                m_pointcloud_timer = this->create_wall_timer(
+                    std::chrono::milliseconds(1000 / p_broadcast_pointcloud_rate_hz),
+                    std::bind(&CrazyflieSITContainer::m_pointcloud_timer_callback, this)
+                );
+                RCLCPP_INFO(this->get_logger(), "Pointcloud broadcasting enabled.");
+            } else RCLCPP_ERROR(this->get_logger(), "Pointcloud broadcasting enabled but 'broadcast_pointcloud_rate_hz' or 'broadcast_pointcloud_topic_name' is missing in the YAML file.");               
+        }     
+    }
+
     m_factory = create_component_factory("crazyflie_sitl", "CrazyflieSITL");
     m_initialize_timer = this->create_wall_timer(
       std::chrono::milliseconds(100),
@@ -79,6 +112,51 @@ CrazyflieSITContainer(
     RCLCPP_INFO(get_logger(), "Removed all crazyflies.");
   }
 private: 
+  void m_pointcloud_timer_callback()
+  {
+    if (m_pointcloud_pub && !m_crazyflies.empty())
+    {
+        // Create a PCL point cloud
+        pcl::PointCloud<pcl::PointXYZ> cloud;
+
+        // Iterate from 1 to 3 and add points (1,2,3)
+        for (auto & cf : m_crazyflies)
+        {
+            /**
+             * This is some bit of magic here. However for large number of crazyflies
+             * we don't want each crazyflie to publish its own position (as in lighthouse system)
+             * enabling pointcloud mode therefore acts like a motion capture system such as vicon or optitrack
+             */
+            auto node = cf.second.first.get_node_instance();
+            auto rclcpp_node_ptr = std::static_pointer_cast<rclcpp::Node>(node);
+            auto crazyflie_ptr = std::dynamic_pointer_cast<CrazyflieSITL>(rclcpp_node_ptr);
+            if (!crazyflie_ptr) {
+                RCLCPP_WARN(this->get_logger(), "Failed to downcast to CrazyflieSITL for id %d", cf.first);
+                continue;
+            }
+            pcl::PointXYZ point;
+            std::vector<double> pos = crazyflie_ptr->get_position();
+            point.x = pos[0];
+            point.y = pos[1];
+            point.z = pos[2];
+            cloud.points.push_back(point);
+        }
+
+        cloud.width = cloud.points.size();
+        cloud.height = 1;  // unorganized point cloud
+        cloud.is_dense = true;
+
+        // Convert PCL cloud to ROS message
+        sensor_msgs::msg::PointCloud2 output;
+        pcl::toROSMsg(cloud, output);
+        output.header.stamp = this->now();
+        output.header.frame_id = "world"; // change to your frame
+
+
+        m_pointcloud_pub->publish(output);
+    }
+  }
+
   void m_initialize_timer_callback()
   {
     for (int i = 0; i < p_ids.size(); i++)
@@ -167,6 +245,7 @@ private:
     ss << "]"; 
 
     add_parameter("initial_position", ss.str());
+    add_parameter("publish_tf", p_publish_tf ? "true" : "false");
     
     auto options = rclcpp::NodeOptions()
       .arguments(remap_rules);
@@ -231,9 +310,16 @@ private:
   rclcpp::TimerBase::SharedPtr m_initialize_timer;
   std::vector<int> p_ids;
   std::vector<std::vector<double>> p_initial_positions;
+  bool p_publish_tf = true;
+  bool p_broadcast_pointcloud = false;
+  int  p_broadcast_pointcloud_rate_hz = 100; // Hz
+  std::string p_broadcast_pointcloud_topic_name = "pointCloud";
   std::unique_ptr<class_loader::ClassLoader> m_loader;
   std::shared_ptr<rclcpp_components::NodeFactory> m_factory;
   std::map<uint8_t, std::pair<rclcpp_components::NodeInstanceWrapper, DedicatedExecutorWrapper>> m_crazyflies;
+
+  std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> m_pointcloud_pub;
+  std::shared_ptr<rclcpp::TimerBase> m_pointcloud_timer;
 protected:
   std::weak_ptr<rclcpp::Executor> m_executor;
 };

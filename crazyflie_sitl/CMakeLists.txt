@@ -5,6 +5,8 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+cmake_policy(SET CMP0074 NEW) ## For PCL library
+
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(Eigen3 REQUIRED)
@@ -13,6 +15,9 @@ find_package(yaml-cpp REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(rclcpp_components REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(pcl_conversions REQUIRED)
+find_package(PCL REQUIRED)
 
 include_directories(
   include
@@ -101,10 +106,16 @@ ament_target_dependencies(
   container
   rclcpp
   rclcpp_components
+  sensor_msgs
+  pcl_conversions
+  PCL
   ament_index_cpp
+  tf2_ros
 )
 target_link_libraries(container
   yaml-cpp
+  quadcopter_model
+  communication_lib
 )
 
 install(TARGETS container
