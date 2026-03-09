@@ -14,13 +14,13 @@
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
+#include <sys/un.h>
 
 
 
 class Firmwarelink {
 public:
-    Firmwarelink(uint16_t port);
+    Firmwarelink(const char* unix_path);
     ~Firmwarelink();
 
     size_t send(const uint8_t* data, size_t size, uint8_t* receive_data);
@@ -30,8 +30,10 @@ public:
 private:
     int m_fd{-1};
     
-    struct sockaddr_in m_my_address;
-    struct sockaddr_in m_remote_address;
+    
+    struct sockaddr_un m_my_address;
+    struct sockaddr_un m_remote_address;
+    
     socklen_t m_address_len{sizeof(m_my_address)};
 
     bool m_is_connected{false};    

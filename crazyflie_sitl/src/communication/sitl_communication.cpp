@@ -12,7 +12,7 @@ uint16_t firmware_port)
     m_radio_to_firmware_queue = std::make_shared<std::queue<sitl_communication::packets::queue_packet>>();
     m_firmware_to_radio_queue = std::make_shared<std::queue<sitl_communication::packets::queue_packet>>();
     
-    m_firmware_link = std::make_unique<Firmwarelink>(firmware_port);
+    m_firmware_link = std::make_unique<Firmwarelink>("/tmp/crazyflie_client.sock");
     m_radio_link = std::make_unique<Radiolink>(
         19850,
         m_radio_to_firmware_queue, 

@@ -22,7 +22,10 @@ FirmwareLauncher::FirmwareLauncher()
         argv.push_back(const_cast<char*>("crazyflie_sitl"));
         argv.push_back(const_cast<char*>("cf2"));
 
-        argv.push_back(const_cast<char*>("19950"));
+        argv.push_back(const_cast<char*>("unix"));
+        argv.push_back(const_cast<char*>("/tmp/crazyflie_sitl.sock"));
+        argv.push_back(const_cast<char*>("/tmp/crazyflie_client.sock"));
+
         // add arguments for cf2 here, e.g.:
         // argv.push_back(const_cast<char*>("--some-arg"));
         // argv.push_back(const_cast<char*>("value"));

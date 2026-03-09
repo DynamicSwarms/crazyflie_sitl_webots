@@ -21,17 +21,20 @@ bool waitReadable(int fd, int timeoutMs) {
     return rc > 0 && FD_ISSET(fd, &rfds);
 }
 
-Firmwarelink::Firmwarelink(uint16_t port)
+Firmwarelink::Firmwarelink(const char* unix_path)
 {
-    m_fd = ::socket(AF_INET, SOCK_DGRAM, 0);
+    m_fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
     if (m_fd < 0) {
         throw std::runtime_error("Firmwarelink: socket() failed");
     }
+    memset(&m_my_address, 0, sizeof(m_my_address));
+    m_my_address.sun_family = AF_UNIX;
+    m_my_address.sun_path[0] = '\0'; // Abstract namespace
 
-    m_my_address.sin_family = AF_INET;
-    m_my_address.sin_addr.s_addr = INADDR_ANY;
-    m_my_address.sin_port = htons(port);
-
+    char abstract_path[108];
+    strcpy(abstract_path, unix_path);
+    strncpy(m_my_address.sun_path+1, abstract_path, sizeof(m_my_address.sun_path) - 2);
+    
     if (bind(m_fd, reinterpret_cast<sockaddr*>(&m_my_address), sizeof(m_my_address)) < 0) {
         close(m_fd);
         m_fd = -1;
