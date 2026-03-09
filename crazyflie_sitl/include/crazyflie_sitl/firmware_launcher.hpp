@@ -4,7 +4,9 @@
 class FirmwareLauncher {
 
 public:
-    FirmwareLauncher();
+    FirmwareLauncher(
+        std::string& sitl_socket_path, 
+        std::string& client_socket_path);
 
     ~FirmwareLauncher();
     

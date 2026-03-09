@@ -68,19 +68,26 @@ class CrazyflieSITL : public rclcpp::Node
 public:
   CrazyflieSITL()
   : Node("crazyflie_sitl")
+  , m_id(this->declare_parameter("id", rclcpp::ParameterValue(0xE7)).get<int>())
+  , m_initial_position(this->declare_parameter("initial_position", rclcpp::ParameterValue(std::vector<double>{0.0, 0.0, 0.0})).get<std::vector<double>>())
+  , m_sitl_socket_path("/tmp/crazyflie_sitl_" + std::to_string(m_id) + ".sock")
+  , m_client_socket_path("/tmp/crazyflie_client_" + std::to_string(m_id) + ".sock")
+  , m_firmware_launcher(std::make_unique<FirmwareLauncher>(m_sitl_socket_path, m_client_socket_path)) // Launch the firmware
+  , m_communication(std::make_unique<sitl_communication::SITLCommunication>(m_id, m_client_socket_path))
   , m_cmd()
-  , m_firmware_launcher(std::make_unique<FirmwareLauncher>()) // Launch the firmware
   {
-    // Crazyflie parameters
-    const Scalar mass = 0.02;//0.032;      // kg
-    const Scalar arm_length = 0.0325; // super stable  //0.04; // meters
 
-    // Create dynamics model
+    // Crazyflie parameters
+    const Scalar mass = 0.032;
+    const Scalar arm_length = 0.0325; 
     QuadrotorDynamics dynamics(mass, arm_length);
 
     m_quadrotor = std::make_shared<Quadrotor>(dynamics);
     QuadState initial_state;
     initial_state.setZero();
+    initial_state.x[QS::POSX] = m_initial_position[0];
+    initial_state.x[QS::POSY] = m_initial_position[1];
+    initial_state.x[QS::POSZ] = m_initial_position[2];
     m_quadrotor->setState(initial_state);
     m_quadrotor->setWorldBox((Matrix<3, 2>() << -10, 10, -10, 10, 0.0, 10).finished());
 
@@ -92,22 +99,15 @@ public:
     m_cmd.thrusts = flightlib::Vector<4>::Zero();
 
     m_tf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
-    client_ = this->create_client<crtp_interfaces::srv::CrtpPacketSend>("crazyradio/send_crtp_packet80");
-
-    uint16_t port = 19950;
-    m_communication = std::make_unique<sitl_communication::SITLCommunication>(0,port);
-
-    crtp_response_sub_ = this->create_subscription<crtp_interfaces::msg::CrtpResponse>(
-      "crazyradio/crtp_response",
-      rclcpp::QoS(100),
-      std::bind(&CrazyflieSITL::crtpResponseMsgCallback, this, _1));
 
 
-    timer_ = this->create_wall_timer(
+
+
+    m_control_loop_timer = this->create_wall_timer(
       1ms,  // 1000 Hz
-      std::bind(&CrazyflieSITL::timer_callback, this)
+      std::bind(&CrazyflieSITL::control_loop, this)
     );
-    RCLCPP_INFO(this->get_logger(), "CrazyflieSITL node started");
+    RCLCPP_INFO(this->get_logger(), "Started CrazyflieSITL node with ID: %d, and initial position: [%f, %f, %f]", m_id, m_initial_position[0], m_initial_position[1], m_initial_position[2]);
   }
 
 
@@ -143,7 +143,7 @@ void get_imu_packet(const QuadState& state, uint8_t* buffer, size_t& length)
 }
 
 
-  void timer_callback()
+  void control_loop()
   {
     m_communication->handle_comms();
 
@@ -161,51 +161,7 @@ void get_imu_packet(const QuadState& state, uint8_t* buffer, size_t& length)
       thrusts[i] = pwm_to_thrust(pwm_norm[i]); // Give a bit more thrust for testting
     }
     m_cmd.thrusts = flightlib::Vector<4>(thrusts[0],thrusts[1], thrusts[2], thrusts[3]); 
-  
-  //static int tick = 0;
-  //tick++;
-  //if (tick == 4000) {
-  //  m_cmd.thrusts = flightlib::Vector<4>(0.07, 0.07, 0.07, 0.07); // For testing, set a constant thrust
-  //  m_quadrotor->setWorldBox((Matrix<3, 2>() << -10, 10, -10, 10, -10.0, 10).finished());
-  //}
-
-  static bool world_is_restricted = true;
-  if (!world_is_restricted && pwms_received[0] == 0 && pwms_received[1] == 0 && pwms_received[2] == 0 && pwms_received[3] == 0) {
-    world_is_restricted = true;
-    RCLCPP_INFO(this->get_logger(), "Restricted world box");
-    m_quadrotor->setWorldBox((Matrix<3, 2>() << -10, 10, -10, 10, 0.0, 10).finished());
-  } else if (world_is_restricted && !(pwms_received[0] == 0 && pwms_received[1] == 0 && pwms_received[2] == 0 && pwms_received[3] == 0)) {
-    world_is_restricted = false;
-    RCLCPP_INFO(this->get_logger(), "Unrestricted world box");
-    m_quadrotor->setWorldBox((Matrix<3, 2>() << -10, 10, -10, 10, -10.0, 10).finished());
-  }
-
-//    static bool is_takeoff = false;
-//    if (last_pwms_received[0] == 0 && last_pwms_received[1] == 0 && last_pwms_received[2] == 0 && last_pwms_received[3] == 0) {
-//      if (!is_takeoff) {
-//      
-//        QuadState initial_state;
-//        initial_state.setZero();
-//        m_quadrotor->setState(initial_state);
-//        
-//        RCLCPP_INFO(this->get_logger(), "No PWM received, resetting quadrotor state to zero");
-//      }
-//    } else {
-//        is_takeoff = true;
-//        //m_cmd.thrusts = flightlib::Vector<4>(0.2, 0.2, 0.2, 0.2); 
-//
-//        RCLCPP_INFO(this->get_logger(), "Received PWM: %d, %d, %d, %d; Normalized: %.2f, %.2f, %.2f, %.2f; Thrusts: %.6f, %.6f, %.6f, %.6f",
-//                last_pwms_received[0], last_pwms_received[1], last_pwms_received[2], last_pwms_received[3],
-//                pwm_norm[0], pwm_norm[1], pwm_norm[2], pwm_norm[3],
-//                thrusts[0], thrusts[1], thrusts[2], thrusts[3]);
-//
-//    }
-
-    //RCLCPP_INFO(this->get_logger(), "Received PWM: %d, %d, %d, %d; Normalized: %.2f, %.2f, %.2f, %.2f; Thrusts: %.6f, %.6f, %.6f, %.6f",
-    //    last_pwms_received[0], last_pwms_received[1], last_pwms_received[2], last_pwms_received[3],
-    //    pwm_norm[0], pwm_norm[1], pwm_norm[2], pwm_norm[3],
-    //    m_cmd.thrusts[0], m_cmd.thrusts[1], m_cmd.thrusts[2], m_cmd.thrusts[3]);
-
+ 
     m_cmd.t += 0.001;  // time in seconds
     if (!m_quadrotor->run(m_cmd, 0.001)) {
       RCLCPP_WARN(this->get_logger(), "Quadrotor simulation step failed");
@@ -214,27 +170,7 @@ void get_imu_packet(const QuadState& state, uint8_t* buffer, size_t& length)
     QuadState state;
     if (m_quadrotor->getState(&state)) {
       static int count = 0;
-      if (count++ % 100 == 0) {  // Print state every 100 ms
-        publish_tf(state);
-      }
-
-      // if (!client_->wait_for_service(std::chrono::seconds(1))) {
-      //   RCLCPP_WARN(this->get_logger(), "Service 'crazyradio/send_crtp_packet80' not available.");
-      //   //return;
-      // }
-
-      //if (!(count % 1 == 0)) return; // 500Hz
-
-      auto request = std::make_shared<crtp_interfaces::srv::CrtpPacketSend::Request>();
-      request->link.channel = 80;
-      memcpy(request->link.address.data(), "\xE7\xE7\xE7\xE7\xE7", 5); // broadcast address
-      
-
-      //request->packet = get_imu(state);
-      //auto future = client_->async_send_request(request);
-
-      //request->packet = get_pos(state);
-      //future = client_->async_send_request(request);
+      if (count++ % 100 == 0) publish_tf(state);
 
       uint8_t buffer[32];
       size_t length;
@@ -249,41 +185,11 @@ void get_imu_packet(const QuadState& state, uint8_t* buffer, size_t& length)
       
       }
       
-      std::stringstream ss;
-      ss << "State t=" << m_cmd.t
-        << state << state.x[QS::ACCZ];
-
-     // RCLCPP_INFO(this->get_logger(), "%s", ss.str().c_str());
     } else {
       RCLCPP_WARN(this->get_logger(), "Failed to get quadrotor state");
     }
   }
 
-  void crtpResponseMsgCallback(const crtp_interfaces::msg::CrtpResponse::SharedPtr msg)
-    {
-      // Check if we matchh (by address and channel)
-
-      if (msg->packet.port == CRTP_PORT_SETPOINT_SIM && msg->packet.channel == 0) {
-          
-        // Reconstruct address (same packing convention used elsewhere in this file)
-        uint64_t address = 0;
-        for (int i = 0; i < 5; i++)
-            address |= (uint64_t)msg->address[i] << (8 * (4 - i));
-
-        std::stringstream ss;
-        ss << "CRTP response topic: ch=" << (int)msg->channel
-           << " addr=0x" << std::hex << (address & 0xFFFFFFFFFFULL) << std::dec
-           << " port=" << (int)msg->packet.port
-           << " pkt_ch=" << (int)msg->packet.channel
-           << " len=" << (int)msg->packet.data_length
-           << " data=";
-
-        for (int i = 0; i < msg->packet.data_length; i++)
-            ss << (int)msg->packet.data[i] << " ";
-
-        //RCLCPP_INFO(this->get_logger(), "%s", ss.str().c_str());
-      }
-    }
 
   void publish_tf(const QuadState& state)
   {
@@ -305,21 +211,23 @@ void get_imu_packet(const QuadState& state, uint8_t* buffer, size_t& length)
     m_tf_broadcaster->sendTransform(transformStamped);
   }
 
+private:
+  uint8_t m_id;
+  std::vector<double> m_initial_position;
+  std::string m_sitl_socket_path;
+  std::string m_client_socket_path;
+  std::unique_ptr<FirmwareLauncher> m_firmware_launcher;
+  std::unique_ptr<sitl_communication::SITLCommunication> m_communication;
+
 
   flightlib::Command m_cmd;
   std::shared_ptr<Quadrotor> m_quadrotor;
-  rclcpp::TimerBase::SharedPtr timer_;
-  
-  rclcpp::Client<crtp_interfaces::srv::CrtpPacketSend>::SharedPtr client_;
-  rclcpp::Subscription<crtp_interfaces::msg::CrtpResponse>::SharedPtr crtp_response_sub_;
-
-  std::unique_ptr<sitl_communication::SITLCommunication> m_communication;
-
+ 
   std::unique_ptr<tf2_ros::TransformBroadcaster> m_tf_broadcaster;
   std::string m_world_id = "world";
   std::string m_frame_id = "cf231";
 
-  std::unique_ptr<FirmwareLauncher> m_firmware_launcher;
+  rclcpp::TimerBase::SharedPtr m_control_loop_timer;
 };
 
 int main(int argc, char ** argv)

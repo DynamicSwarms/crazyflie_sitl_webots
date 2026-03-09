@@ -6,15 +6,15 @@
 namespace sitl_communication{
 
 SITLCommunication::SITLCommunication(
-uint16_t radio_port, 
-uint16_t firmware_port)
+    uint8_t id,
+    const std::string& client_socket_path)
 {
     m_radio_to_firmware_queue = std::make_shared<std::queue<sitl_communication::packets::queue_packet>>();
     m_firmware_to_radio_queue = std::make_shared<std::queue<sitl_communication::packets::queue_packet>>();
     
-    m_firmware_link = std::make_unique<Firmwarelink>("/tmp/crazyflie_client.sock");
+    m_firmware_link = std::make_unique<Firmwarelink>(client_socket_path);
     m_radio_link = std::make_unique<Radiolink>(
-        19850,
+        19850 + id,
         m_radio_to_firmware_queue, 
         m_firmware_to_radio_queue);
 }

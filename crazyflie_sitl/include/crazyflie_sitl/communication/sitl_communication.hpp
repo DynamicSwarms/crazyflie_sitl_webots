@@ -9,7 +9,7 @@
 #include "communication/firmwarelink.hpp"
 #include "communication/radiolink.hpp"
 
-
+#include <string>
 
 namespace sitl_communication {
 
@@ -17,9 +17,8 @@ class SITLCommunication
 {
 public: 
     SITLCommunication(
-        uint16_t radio_port,
-        uint16_t firmware_port
-    );
+        uint8_t id,
+        const std::string& client_socket_path);
 
     void handle_comms();
 

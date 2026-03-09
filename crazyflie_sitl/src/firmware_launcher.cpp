@@ -5,9 +5,12 @@
 #include <sys/wait.h>
 
 #include <vector>
-
-
-FirmwareLauncher::FirmwareLauncher()
+#include <string>
+#include <ostream>
+#include <iostream>
+FirmwareLauncher::FirmwareLauncher(
+    std::string& sitl_socket_path, 
+    std::string& client_socket_path)
 {
     m_firmware_pid = fork();
 
@@ -23,19 +26,13 @@ FirmwareLauncher::FirmwareLauncher()
         argv.push_back(const_cast<char*>("cf2"));
 
         argv.push_back(const_cast<char*>("unix"));
-        argv.push_back(const_cast<char*>("/tmp/crazyflie_sitl.sock"));
-        argv.push_back(const_cast<char*>("/tmp/crazyflie_client.sock"));
-
-        // add arguments for cf2 here, e.g.:
-        // argv.push_back(const_cast<char*>("--some-arg"));
-        // argv.push_back(const_cast<char*>("value"));
-
+        argv.push_back(const_cast<char*>(sitl_socket_path.c_str()));
+        argv.push_back(const_cast<char*>(client_socket_path.c_str()));
         argv.push_back(nullptr);
-
+        
         execvp("ros2", argv.data());
         _exit(1);
     }
-
 }
 
 FirmwareLauncher::~FirmwareLauncher()

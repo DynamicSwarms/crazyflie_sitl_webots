@@ -21,7 +21,7 @@ bool waitReadable(int fd, int timeoutMs) {
     return rc > 0 && FD_ISSET(fd, &rfds);
 }
 
-Firmwarelink::Firmwarelink(const char* unix_path)
+Firmwarelink::Firmwarelink(const std::string& unix_path)
 {
     m_fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
     if (m_fd < 0) {
@@ -32,7 +32,7 @@ Firmwarelink::Firmwarelink(const char* unix_path)
     m_my_address.sun_path[0] = '\0'; // Abstract namespace
 
     char abstract_path[108];
-    strcpy(abstract_path, unix_path);
+    strcpy(abstract_path, unix_path.c_str());
     strncpy(m_my_address.sun_path+1, abstract_path, sizeof(m_my_address.sun_path) - 2);
     
     if (bind(m_fd, reinterpret_cast<sockaddr*>(&m_my_address), sizeof(m_my_address)) < 0) {

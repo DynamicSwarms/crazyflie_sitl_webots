@@ -20,7 +20,7 @@
 
 class Firmwarelink {
 public:
-    Firmwarelink(const char* unix_path);
+    Firmwarelink(const std::string& unix_path);
     ~Firmwarelink();
 
     size_t send(const uint8_t* data, size_t size, uint8_t* receive_data);
