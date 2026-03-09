@@ -12,7 +12,6 @@ find_package(rclcpp REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(crtp_interfaces REQUIRED)
 find_package(rclcpp_components REQUIRED)
 
 include_directories(
@@ -26,29 +25,7 @@ target_include_directories(crazyflie_sitl PUBLIC
 target_compile_features(crazyflie_sitl PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
 # Build quadcopter_model library
-file(GLOB_RECURSE QUADCOPTER_MODEL_SRCS
-    src/quadcopter_model/common/*.cpp
-    src/quadcopter_model/dynamics/*.cpp
-    src/quadcopter_model/objects/*.cpp
-    src/quadcopter_model/sensors/*.cpp
-)
-
-add_library(quadcopter_model
-  ${QUADCOPTER_MODEL_SRCS}
-)
-set_target_properties(quadcopter_model PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-target_compile_features(quadcopter_model PUBLIC cxx_std_17)
-target_include_directories(quadcopter_model PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/crazyflie_sitl>
-  $<INSTALL_INTERFACE:include>
-)
-
-
-target_link_libraries(quadcopter_model
-  Eigen3::Eigen
-  yaml-cpp
-)
+add_subdirectory(quadcopter_model)
 
 ## Build connection library
 
@@ -92,7 +69,6 @@ ament_target_dependencies(crazyflie_sitl
   rclcpp
   tf2_ros
   geometry_msgs
-  crtp_interfaces
   rclcpp_components
 )
 
@@ -110,7 +86,6 @@ ament_target_dependencies(crazyflie_sitl_component
   rclcpp
   tf2_ros
   geometry_msgs
-  crtp_interfaces
   rclcpp_components)
 
 rclcpp_components_register_nodes(crazyflie_sitl_component "CrazyflieSITL")

@@ -6,9 +6,6 @@
 #include "quadcopter_model/objects/quadrotor.hpp"
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <tf2_ros/transform_broadcaster.h>
-#include "crtp_interfaces/srv/crtp_packet_send.hpp"
-#include "crtp_interfaces/msg/crtp_packet.hpp"
-#include "crtp_interfaces/msg/crtp_response.hpp"
 
 #include "communication/sitl_communication.hpp"
 #include "communication/sitl_packets.hpp"
@@ -16,7 +13,7 @@
 #include "firmware_launcher.hpp"
 
 using namespace std::chrono_literals;
-using namespace flightlib;
+using namespace quadcopter;
 using std::placeholders::_1;
 
 
@@ -93,7 +90,7 @@ public:
     m_quadrotor->setWorldBox((Matrix<3, 2>() << -10, 10, -10, 10, 0.0, 10).finished());
 
     m_cmd.t = 0.0;
-    m_cmd.thrusts = flightlib::Vector<4>::Zero();
+    m_cmd.thrusts = quadcopter::Vector<4>::Zero();
 
     m_tf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
@@ -151,7 +148,7 @@ public:
     for (int i = 0; i < 4; ++i) {
       thrusts[i] = pwm_to_thrust(pwm_norm[i]); // Give a bit more thrust for testting
     }
-    m_cmd.thrusts = flightlib::Vector<4>(thrusts[0],thrusts[1], thrusts[2], thrusts[3]); 
+    m_cmd.thrusts = quadcopter::Vector<4>(thrusts[0],thrusts[1], thrusts[2], thrusts[3]); 
   }
 
 
@@ -215,7 +212,7 @@ private:
   std::unique_ptr<sitl_communication::SITLCommunication> m_communication;
 
 
-  flightlib::Command m_cmd;
+  quadcopter::Command m_cmd;
   std::shared_ptr<Quadrotor> m_quadrotor;
  
   std::unique_ptr<tf2_ros::TransformBroadcaster> m_tf_broadcaster;
