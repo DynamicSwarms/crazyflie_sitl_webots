@@ -55,18 +55,7 @@ Radiolink::~Radiolink()
 void
 Radiolink::handle_radio_communication()
 {
-    // As long as we are not connected, we send a null packets
-    // in order to establish the connection to the radio.
-    m_control_loop_count++;
-    if (!is_connected() && m_control_loop_count % 20 == 0)
-    {
-        sitl_communication::packets::queue_packet out_packet;
-        out_packet.data[0] = 0xF3;
-        out_packet.data_length = 1;
-        m_firmware_to_radio_queue->push(out_packet);
-
-        //std::cerr << "Sending null packet to radio to establish connection" << std::endl;
-    }
+   
 
    // For each received packet we need to send a packet back
    bool send_nullpacket_in_any_case = handle_from_radio_packets();
@@ -77,7 +66,21 @@ void Radiolink::handle_to_radio_packets(bool send_nullpacket_in_any_case)
 {
     sitl_communication::packets::queue_packet out_packet;
     out_packet.data_length = 0;
-    if (!m_firmware_to_radio_queue->empty())
+
+    if (!is_connected())
+    {
+        m_control_loop_count++;
+        // As long as we are not connected, we send a null packets
+        // in order to establish the connection to the radio.
+        // We do not clear the queue so radio receives
+        // all packets upon connection
+        if (m_control_loop_count % 20 == 0)
+        {
+            out_packet.data[0] = 0xF3;
+            out_packet.data_length = 1;
+        }
+    }
+    else if (!m_firmware_to_radio_queue->empty())
     { 
         out_packet = m_firmware_to_radio_queue->front();  
         m_firmware_to_radio_queue->pop();

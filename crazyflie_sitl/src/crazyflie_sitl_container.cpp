@@ -49,8 +49,8 @@ CrazyflieSITContainer(
     std::weak_ptr<rclcpp::Executor> executor,
     const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
   : Node("crazyflie_stil_container", options)
-  , m_executor(executor)
   , m_crazyflies()
+  , m_executor(executor)
   {
     this->declare_parameter<std::string>("crazyflie_configuration", default_yaml);
     std::string yaml_file;
@@ -158,11 +158,11 @@ private:
 
   void m_initialize_timer_callback()
   {
-    for (int i = 0; i < p_ids.size(); i++)
+    for (size_t i = 0; i < p_ids.size(); i++)
     {
         add_crazyflie(p_ids[i], p_initial_positions[i]);
     }
-    RCLCPP_INFO(get_logger(), "Initialized %d crazyflies.", m_crazyflies.size());
+    RCLCPP_INFO(get_logger(), "Initialized %ld crazyflies.", m_crazyflies.size());
     m_initialize_timer->cancel();
 
   }

@@ -101,6 +101,23 @@ struct QuadState {
     return t == rhs.t && x.isApprox(rhs.x, 1e-5);
   }
 
+  QuadState& operator=(const QuadState& other) {
+    if (this != &other) {
+        x = other.x;  // copy the actual Eigen vector
+        t = other.t;
+        // Rebind the Ref members to the new x
+        p = x.segment<IDX::NPOS>(IDX::POS);
+        qx = x.segment<IDX::NATT>(IDX::ATT);
+        v = x.segment<IDX::NVEL>(IDX::VEL);
+        w = x.segment<IDX::NOME>(IDX::OME);
+        a = x.segment<IDX::NACC>(IDX::ACC);
+        tau = x.segment<IDX::NTAU>(IDX::TAU);
+        bw = x.segment<IDX::NBOME>(IDX::BOME);
+        ba = x.segment<IDX::NBACC>(IDX::BACC);
+    }
+    return *this;
+ }
+
   friend std::ostream& operator<<(std::ostream& os, const QuadState& state);
 };
 

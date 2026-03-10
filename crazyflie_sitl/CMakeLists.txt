@@ -1,6 +1,7 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.12)
 project(crazyflie_sitl)
 
+set(CMAKE_CXX_STANDARD 20)
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
@@ -27,7 +28,7 @@ add_executable(crazyflie_sitl src/crazyflie_sitl.cpp)
 target_include_directories(crazyflie_sitl PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_compile_features(crazyflie_sitl PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_compile_features(crazyflie_sitl PUBLIC c_std_99 cxx_std_20)  # Require C99 and C++20
 
 # Build quadcopter_model library
 add_subdirectory(quadcopter_model)
@@ -45,7 +46,7 @@ add_library(communication_lib
   ${COMMUNICATION_SRCS}
 )
 set_target_properties(communication_lib PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_compile_features(communication_lib PUBLIC cxx_std_17)
+target_compile_features(communication_lib PUBLIC cxx_std_20)
 
 target_include_directories(communication_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/crazyflie_sitl>
@@ -57,7 +58,7 @@ add_library(firmware_launcher_lib
   src/firmware_launcher.cpp
 )
 set_target_properties(firmware_launcher_lib PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_compile_features(firmware_launcher_lib PUBLIC cxx_std_17)
+target_compile_features(firmware_launcher_lib PUBLIC cxx_std_20)
 
 target_include_directories(firmware_launcher_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -101,7 +102,7 @@ add_executable(container src/crazyflie_sitl_container.cpp)
 target_include_directories(container PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_compile_features(container PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_compile_features(container PUBLIC c_std_99 cxx_std_20)  # Require C99 and C++20
 ament_target_dependencies(
   container
   rclcpp

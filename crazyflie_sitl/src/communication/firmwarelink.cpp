@@ -80,9 +80,7 @@ Firmwarelink::send(
             //std::cerr << "Firmwarelink: Sent " << sent << " bytes\n";
         }
     }
-
-    std::array<uint8_t, kMaxDatagram> rx{};
-    
+   
     ssize_t r = recvfrom(
         m_fd, receive_data, kMaxDatagram, 0,
         reinterpret_cast<sockaddr*>(&m_remote_address), &m_address_len

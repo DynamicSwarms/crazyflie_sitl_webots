@@ -28,18 +28,15 @@ enum SensorTypeSim_e {
   SENSOR_BARO_SIM       = 2,
 };
 
-union Axis3i16 {
-  struct {
-    int16_t x;
-    int16_t y;
-    int16_t z;
-  };
-  int16_t axis[3];
+struct Axis3i16 {
+  int16_t x;
+  int16_t y;
+  int16_t z;
 } __attribute__((packed));
 
 struct imu_s {
-  union Axis3i16 acc;
-  union Axis3i16 gyro;
+  Axis3i16 acc;
+  Axis3i16 gyro;
 } __attribute__((packed));
 
 struct pos_s {

@@ -61,7 +61,6 @@ void SITLCommunication::handle_firmware_packet(const uint8_t* packet, size_t pac
         {
             m_last_pwms_received[i] = pwm_packet.motor_pwms[i];
         }
-        //  We originally checked if they are all above 1000, otherwise skipped...
     } else if (packet_length > 0) {
         sitl_communication::packets::queue_packet queue_packet;
         std::memcpy(queue_packet.data, packet, packet_length);

@@ -62,6 +62,7 @@ class Quadrotor : ObjectBase {
   inline void setCollision(const bool collision) { collision_ = collision; };
 
  private:
+   Matrix<3, 2> world_box_;
   // quadrotor dynamics, integrators
   QuadrotorDynamics dynamics_;
   IMU imu_;
@@ -86,9 +87,6 @@ class Quadrotor : ObjectBase {
     Vector<3>(16.6, 16.6, 5.0).asDiagonal();
   // gravity
   const Vector<3> gz_{0.0, 0.0, Gz};
-
-  // auxiliary variables
-  Matrix<3, 2> world_box_;
 };
 
 }  // namespace quadcopter

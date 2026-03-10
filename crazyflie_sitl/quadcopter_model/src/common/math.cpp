@@ -117,7 +117,7 @@ void insert(const SparseMatrix& from, SparseMatrix* const into,
 
   into->setFromTriplets(
     v.begin(), v.end(),
-    [](const Scalar& older, const Scalar& newer) { return newer; });
+    [](const Scalar& older __attribute__((unused)), const Scalar& newer) { return newer; });
 }
 
 void insert(const Matrix<>& from, SparseMatrix* const into,

@@ -104,6 +104,7 @@ bool Quadrotor::reset(const QuadState &state) {
 
 Vector<4> Quadrotor::runFlightCtl(const Scalar sim_dt, const Vector<3> &omega,
                                   const Command &command) {
+  (void)sim_dt;  // sim_dt is not used in this controller, but we keep it as an argument for potential future use
   const Scalar force = dynamics_.getMass() * command.collective_thrust;
 
   const Vector<3> omega_err = command.omega - omega;
